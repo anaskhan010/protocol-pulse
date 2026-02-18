@@ -14,13 +14,13 @@ const emailNotificationService = require("./service/emailNotificationService");
 
 dotenv.config({ path: "./config/config.env" });
 
-cron.schedule("0 * * * *", () => {
+cron.schedule("*/5 * * * *", () => {
   console.log("Syncing studies...");
   studiesController.getAllStuduies();
 });
 
 // Run scheduled email alerts every 15 minutes
-cron.schedule("0 * * * *", () => {
+cron.schedule("*/5 * * * *", () => {
   console.log("Checking for scheduled email alerts...");
   emailNotificationService.processScheduledAlerts();
 });

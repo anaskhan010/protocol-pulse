@@ -9,17 +9,18 @@ const cors = require("cors");
 const cron = require("node-cron");
 const studiesController = require("./controller/studies/studiesController");
 const emailRoute = require("./routes/emailManagementRoute/emailRoutes");
+const dashboardRoute = require("./routes/dashboard/dashboardRoute");
 const emailNotificationService = require("./service/emailNotificationService");
 
 dotenv.config({ path: "./config/config.env" });
 
-cron.schedule("*/15 * * * *", () => {
+cron.schedule("0 * * * *", () => {
   console.log("Syncing studies...");
   studiesController.getAllStuduies();
 });
 
 // Run scheduled email alerts every 15 minutes
-cron.schedule("*/15 * * * *", () => {
+cron.schedule("0 * * * *", () => {
   console.log("Checking for scheduled email alerts...");
   emailNotificationService.processScheduledAlerts();
 });
@@ -39,6 +40,7 @@ app.use(authMiddleware);
 app.use("/api/v1/role", roleRoute);
 app.use("/api/v1/studies", studiesRoute);
 app.use("/api/v1/email", emailRoute);
+app.use("/api/v1/dashboard", dashboardRoute);
 
 (async () => {
   try {

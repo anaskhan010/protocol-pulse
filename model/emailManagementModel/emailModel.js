@@ -110,6 +110,12 @@ const updateLastSentAt = (alert_id) => {
   return db.query(query, [alert_id]);
 };
 
+const logEmail = (recipient_email, subject, email_type) => {
+  const query =
+    "INSERT INTO email_logs (recipient_email, subject, email_type) VALUES (?, ?, ?)";
+  return db.query(query, [recipient_email, subject, email_type]);
+};
+
 module.exports = {
   getEmailType,
   getFrequency,
@@ -121,4 +127,5 @@ module.exports = {
   getAllConditions,
   getActiveEmailAlertsByType,
   updateLastSentAt,
+  logEmail,
 };

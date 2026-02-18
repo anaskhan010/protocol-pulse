@@ -2,6 +2,7 @@ const userModel = require("../../model/userModel/userModel");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const emailTemplate = require("../../email-template/emailTemplate");
+const emailModel = require("../../model/emailManagementModel/emailModel");
 
 const logoPath = `${process.env.BACKEND_URL}/assets/logo.png`;
 
@@ -50,9 +51,10 @@ const createUser = async (req, res) => {
     };
 
     try {
+      const subject = "Welcome to Research Pulse";
       await emailTemplate.sendEmail({
         to: email,
-        subject: "Welcome to Research Pulse",
+        subject: subject,
         htmlBody: `
 <div style="margin:0;padding:0;background:#f6f7fb;font-family:Arial,Helvetica,sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f6f7fb;padding:24px 0;">
@@ -118,6 +120,7 @@ const createUser = async (req, res) => {
 </div>
 `,
       });
+      await emailModel.logEmail(email, subject, "Welcome Email");
     } catch (emailError) {
       console.error("Failed to send welcome email:", emailError.message);
       // Continue execution - do not fail user creation

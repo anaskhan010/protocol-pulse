@@ -382,12 +382,14 @@ const processNewStudies = async (newStudies) => {
 
       `;
 
+      const subject = `New Clinical Study Matches Found - ${studies.length} New Results`;
       try {
         await emailTemplate.sendEmail({
           to: email,
-          subject: `New Clinical Study Matches Found - ${studies.length} New Results`,
+          subject: subject,
           htmlBody,
         });
+        await emailModel.logEmail(email, subject, "Immediate Study Alert");
         console.log(
           `✅ Email sent to ${email} for ${studies.length} study matches.`,
         );
@@ -551,11 +553,17 @@ const sendDigestEmail = async (userInfo, studies) => {
 </html>
   `;
 
+  const subject = `Your ${studies.length} New Clinical Study Matches`;
   await emailTemplate.sendEmail({
     to: userInfo.user_email,
-    subject: `Your ${studies.length} New Clinical Study Matches`,
+    subject: subject,
     htmlBody,
   });
+  await emailModel.logEmail(
+    userInfo.user_email,
+    subject,
+    "Scheduled Study Alert",
+  );
 };
 
 module.exports = {

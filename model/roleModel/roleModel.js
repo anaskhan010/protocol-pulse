@@ -39,7 +39,7 @@ const createPages = async (page_name, icon) => {
 };
 
 const getAllPages = async () => {
-  const query = `SELECT * FROM pages`;
+  const query = `SELECT * FROM pages ORDER BY sort_order ASC`;
   const [result] = await db.execute(query);
   return result;
 };
@@ -83,6 +83,7 @@ const getPermissionsByRoleId = async (role_id) => {
       p.page_name, 
       p.page_path,
       p.icon,
+      p.sort_order,
       urpp.id as permission_id,
       urpp.can_view, 
       urpp.can_add, 
@@ -90,6 +91,7 @@ const getPermissionsByRoleId = async (role_id) => {
       urpp.can_delete 
     FROM pages p 
     LEFT JOIN user_role_page_permision urpp ON p.page_id = urpp.page_id AND urpp.role_id = ?
+    ORDER BY p.sort_order ASC
   `;
   const [result] = await db.execute(query, [role_id]);
   return result;

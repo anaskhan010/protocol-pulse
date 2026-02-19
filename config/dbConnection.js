@@ -23,10 +23,7 @@ pool
     console.log(`✅ DB Session max_allowed_packet: ${rows[0].max_pkt} bytes`);
   })
   .catch((err) => {
-    console.warn(
-      "⚠️ Could not increase session max_allowed_packet:",
-      err.message,
-    );
+    console.warn(err.message);
   });
 
 pool.safeQuery = async (sql, params, retries = 5) => {

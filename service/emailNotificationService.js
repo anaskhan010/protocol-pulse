@@ -43,19 +43,56 @@ const processNewStudies = async (newStudies) => {
 
     for (const alert of alerts) {
       const matchedStudies = newStudies.filter((study) => {
-        // study.condition_name can be a comma-separated list
-        const studyConditions = study.condition_name
-          ? study.condition_name.split(",").map((c) => c.trim())
-          : [];
-
         // alert.condtion can also be multiple conditions separated by commas
         const alertConditions = alert.condtion
           ? alert.condtion.split(",").map((c) => c.trim())
           : [];
+        // alert.phase can be multiple phases separated by commas
+        const alertPhases = alert.phase
+          ? alert.phase.split(",").map((p) => p.trim())
+          : [];
+        // alert.locations can be multiple locations separated by commas
+        const alertLocations = alert.locations
+          ? alert.locations.split(",").map((l) => l.trim())
+          : [];
 
-        return alertConditions.some((aCond) =>
-          studyConditions.some((sCond) => isMatch(aCond, sCond)),
-        );
+        // study.condition_name can be a comma-separated list
+        const studyConditions = study.condition_name
+          ? study.condition_name.split(",").map((c) => c.trim())
+          : [];
+        // study.phase is usually a string (e.g., "PHASE1, PHASE2")
+        const studyPhases = study.phase
+          ? study.phase.split(",").map((p) => p.trim())
+          : [];
+        // study.locations is pipe-separated (|)
+        const studyLocations = study.locations
+          ? study.locations.split("|").map((l) => l.trim())
+          : [];
+
+        // Matching Logic: (Match Condition) AND (Match Phase) AND (Match Location)
+        // If an alert field is empty, it counts as a match (no restriction)
+
+        const matchCondition =
+          !alertConditions.length ||
+          alertConditions.some((aCond) =>
+            studyConditions.some((sCond) => isMatch(aCond, sCond)),
+          );
+
+        const matchPhase =
+          !alertPhases.length ||
+          alertPhases.some((aPhase) =>
+            studyPhases.some((sPhase) =>
+              sPhase.toLowerCase().includes(aPhase.toLowerCase()),
+            ),
+          );
+
+        const matchLocation =
+          !alertLocations.length ||
+          alertLocations.some((aLoc) =>
+            studyLocations.some((sLoc) => isMatch(aLoc, sLoc)),
+          );
+
+        return matchCondition && matchPhase && matchLocation;
       });
 
       if (matchedStudies.length > 0) {
@@ -472,18 +509,49 @@ const processScheduledAlerts = async () => {
           continue;
         }
 
-        // Apply condition matching
+        // Apply multi-criteria matching
         const alertConditions = alert.condtion
           ? alert.condtion.split(",").map((c) => c.trim())
+          : [];
+        const alertPhases = alert.phase
+          ? alert.phase.split(",").map((p) => p.trim())
+          : [];
+        const alertLocations = alert.locations
+          ? alert.locations.split(",").map((l) => l.trim())
           : [];
 
         const matchedStudies = recentStudies.filter((study) => {
           const studyConditions = study.condition_name
             ? study.condition_name.split(",").map((c) => c.trim())
             : [];
-          return alertConditions.some((aCond) =>
-            studyConditions.some((sCond) => isMatch(aCond, sCond)),
-          );
+          const studyPhases = study.phase
+            ? study.phase.split(",").map((p) => p.trim())
+            : [];
+          const studyLocations = study.locations
+            ? study.locations.split("|").map((l) => l.trim())
+            : [];
+
+          const matchCondition =
+            !alertConditions.length ||
+            alertConditions.some((aCond) =>
+              studyConditions.some((sCond) => isMatch(aCond, sCond)),
+            );
+
+          const matchPhase =
+            !alertPhases.length ||
+            alertPhases.some((aPhase) =>
+              studyPhases.some((sPhase) =>
+                sPhase.toLowerCase().includes(aPhase.toLowerCase()),
+              ),
+            );
+
+          const matchLocation =
+            !alertLocations.length ||
+            alertLocations.some((aLoc) =>
+              studyLocations.some((sLoc) => isMatch(aLoc, sLoc)),
+            );
+
+          return matchCondition && matchPhase && matchLocation;
         });
 
         if (matchedStudies.length > 0) {

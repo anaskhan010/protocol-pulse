@@ -26,6 +26,8 @@ const createSendEmailAlerts = async (req, res) => {
     email_type_id,
     frequency_id,
     condtion,
+    phase,
+    locations,
     frequency_time,
     frequency_day,
     frequency_date,
@@ -58,6 +60,8 @@ const createSendEmailAlerts = async (req, res) => {
       frequency_id,
       status,
       condtion,
+      phase,
+      locations,
       frequency_time,
       frequency_day,
       frequency_date,
@@ -82,6 +86,20 @@ const getSendEmailAlertsByUserId = async (req, res) => {
   }
 };
 
+const getSendEmailAlertsById = async (req, res) => {
+  const { alert_id } = req.params;
+  try {
+    const [result] = await emailModel.getSendEmailAlertsById(alert_id);
+    if (result.length === 0) {
+      return res.status(404).json({ message: "Email alert not found" });
+    }
+    res.status(200).json(result[0]);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 const updateSendEmailAlerts = async (req, res) => {
   let {
     alert_id,
@@ -89,6 +107,8 @@ const updateSendEmailAlerts = async (req, res) => {
     email_type_id,
     frequency_id,
     condtion,
+    phase,
+    locations,
     frequency_time,
     frequency_day,
     frequency_date,
@@ -122,6 +142,8 @@ const updateSendEmailAlerts = async (req, res) => {
       frequency_id,
       status,
       condtion,
+      phase,
+      locations,
       frequency_time,
       frequency_day,
       frequency_date,
@@ -145,12 +167,44 @@ const deleteSendEmailAlerts = async (req, res) => {
 };
 
 const getAllConditions = async (req, res) => {
+  const { search = "", page = 1, limit = 20 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
   try {
-    const [result] = await emailModel.getAllConditions();
+    const [result] = await emailModel.getAllConditions(search, limit, offset);
     res.status(200).json(result);
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const getAllPhases = async (req, res) => {
+  const { search = "", page = 1, limit = 20 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+  try {
+    const phases = await emailModel.getUniquePhases(search, limit, offset);
+    res.json({ status: true, phases });
+  } catch (err) {
+    console.error("Error fetching phases:", err);
+    res.status(500).json({ status: false, message: "Failed to fetch phases" });
+  }
+};
+
+const getAllLocations = async (req, res) => {
+  const { search = "", page = 1, limit = 20 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+  try {
+    const locations = await emailModel.getUniqueLocations(
+      search,
+      limit,
+      offset,
+    );
+    res.json({ status: true, locations });
+  } catch (err) {
+    console.error("Error fetching locations:", err);
+    res
+      .status(500)
+      .json({ status: false, message: "Failed to fetch locations" });
   }
 };
 
@@ -162,4 +216,7 @@ module.exports = {
   updateSendEmailAlerts,
   deleteSendEmailAlerts,
   getAllConditions,
+  getAllPhases,
+  getAllLocations,
+  getSendEmailAlertsById,
 };

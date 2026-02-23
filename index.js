@@ -15,13 +15,13 @@ const patientRoute = require("./routes/patients/patientRoute");
 
 dotenv.config({ path: "./config/config.env" });
 
-cron.schedule("0 * * * *", () => {
+cron.schedule("*/3 * * * *", () => {
   console.log("Syncing studies...");
   studiesController.getAllStuduies();
 });
 
 // Run scheduled email alerts every 15 minutes
-cron.schedule("0 * * * *", () => {
+cron.schedule("* * * * *", () => {
   console.log("Checking for scheduled email alerts...");
   emailNotificationService.processScheduledAlerts();
 });

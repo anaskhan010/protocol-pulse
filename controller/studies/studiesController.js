@@ -119,6 +119,10 @@ const getAllStuduies = async (req, res) => {
           condition_name: (conditionsModule.conditions || []).join(", "),
           enrollment: designModule.enrollmentInfo?.count || null,
           eligibility: eligibilityModule.eligibilityCriteria || null,
+          locations: (protocol.contactsLocationsModule?.locations || [])
+            .map((loc) => `${loc.city}, ${loc.state}`)
+            .filter((v, i, a) => a.indexOf(v) === i)
+            .join("|"),
           raw_json: pruneStudyJson(item),
         };
 
@@ -217,8 +221,8 @@ const getStudies = async (req, res) => {
             phase,
             condition_name,
             enrollment,
-            raw_json,
             COALESCE(locations, '') as locations,
+            overall_status,
             created_at
           FROM studies
           ${where}

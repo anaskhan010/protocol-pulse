@@ -1,5 +1,5 @@
 const axios = require("axios");
-const fromEmail = process.env.EMAIL_FROM || "info@aicruitment.com";
+const fromEmail = process.env.EMAIL_FROM || "info@sentrixre.com";
 exports.sendEmail = async ({ to, subject, htmlBody }) => {
   const apiKey = "em_1ZlKGyfmVdMJpbnLnzQz9DtFGHsmoSpD";
 

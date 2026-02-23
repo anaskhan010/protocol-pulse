@@ -1,5 +1,11 @@
 const db = require("../../config/dbConnection");
 
+let totalCountCache = {
+  total: 0,
+  timestamp: 0,
+  ttl: 5 * 60 * 1000, // 5 minutes
+};
+
 const getAllStuduiesFromClinicalTrailGov = async (study) => {
   let locations = "";
   if (study.raw_json?.protocolSection?.contactsLocationsModule?.locations) {
@@ -17,8 +23,8 @@ const getAllStuduiesFromClinicalTrailGov = async (study) => {
   try {
     const sql = `
       INSERT INTO studies 
-      (nct_id, title, phase, condition_name, enrollment, eligibility, locations, raw_json)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (nct_id, title, phase, condition_name, enrollment, eligibility, locations, raw_json, overall_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         title = VALUES(title),
         phase = VALUES(phase),
@@ -26,8 +32,12 @@ const getAllStuduiesFromClinicalTrailGov = async (study) => {
         enrollment = VALUES(enrollment),
         eligibility = VALUES(eligibility),
         locations = VALUES(locations),
-        raw_json = VALUES(raw_json)
+        raw_json = VALUES(raw_json),
+        overall_status = VALUES(overall_status)
     `;
+
+    const overallStatus =
+      study.raw_json?.protocolSection?.statusModule?.overallStatus || null;
 
     const values = [
       study.nct_id,
@@ -38,6 +48,7 @@ const getAllStuduiesFromClinicalTrailGov = async (study) => {
       study.eligibility,
       locations || null,
       JSON.stringify(study.raw_json),
+      overallStatus,
     ];
 
     return await db.safeQuery(sql, values);
@@ -182,7 +193,8 @@ const getStudies = async ({ page, limit, search, filters = {} }) => {
 
   try {
     const dataQuery = `
-      SELECT id,nct_id, title, phase, condition_name, raw_json,enrollment, COALESCE(locations, '') as locations
+      SELECT id, nct_id, title, phase, condition_name, enrollment, COALESCE(locations, '') as locations,
+      overall_status
       FROM studies
       ${whereClause}
       ORDER BY nct_id DESC
@@ -195,7 +207,24 @@ const getStudies = async ({ page, limit, search, filters = {} }) => {
       ${whereClause}
     `;
 
-    const [[{ total }]] = await db.safeQuery(countQuery, params);
+    let total;
+    if (
+      whereClause === "" &&
+      Date.now() - totalCountCache.timestamp < totalCountCache.ttl
+    ) {
+      total = totalCountCache.total;
+    } else {
+      const [[{ total: computedTotal }]] = await db.safeQuery(
+        countQuery,
+        params,
+      );
+      total = computedTotal;
+      if (whereClause === "") {
+        totalCountCache.total = total;
+        totalCountCache.timestamp = Date.now();
+      }
+    }
+
     const [rows] = await db.safeQuery(dataQuery, [...params, limit, offset]);
 
     return {
@@ -207,7 +236,8 @@ const getStudies = async ({ page, limit, search, filters = {} }) => {
       console.log("ℹ️  locations column not found, selecting without it...");
 
       const dataQuery = `
-        SELECT nct_id, title, phase, condition_name, enrollment, '' as locations
+        SELECT nct_id, title, phase, condition_name, enrollment, '' as locations,
+        JSON_UNQUOTE(JSON_EXTRACT(raw_json, '$.protocolSection.statusModule.overallStatus')) AS overall_status
         FROM studies
         ${whereClause}
         ORDER BY nct_id DESC
@@ -262,56 +292,13 @@ const buildExpertWhere = ({ text }) => {
 
   if (!tokens.length) return { where: "", values: [] };
 
-  const andClauses = [];
-  const values = [];
-
-  for (const token of tokens) {
-    const keyword = `%${token}%`;
-
-    andClauses.push(`
-      (
-        LOWER(nct_id) LIKE ?
-        OR LOWER(title) LIKE ?
-        OR LOWER(condition_name) LIKE ?
-        OR LOWER(phase) LIKE ?
-        OR LOWER(eligibility) LIKE ?
-
-        -- Search in Brief Summary and Detailed Description
-        OR LOWER(JSON_UNQUOTE(JSON_EXTRACT(raw_json, '$.protocolSection.descriptionModule.briefSummary'))) LIKE ?
-        OR LOWER(JSON_UNQUOTE(JSON_EXTRACT(raw_json, '$.protocolSection.descriptionModule.detailedDescription'))) LIKE ?
-
-        -- Search in Conditions (Array)
-        OR LOWER(JSON_EXTRACT(raw_json, '$.protocolSection.conditionsModule.conditions')) LIKE ?
-
-        -- Search in Condition Meshes (Array)
-        OR LOWER(JSON_EXTRACT(raw_json, '$.derivedSection.conditionBrowseModule.meshes')) LIKE ?
-
-        -- Search in Locations (Array of Objects)
-        OR LOWER(JSON_EXTRACT(raw_json, '$.protocolSection.contactsLocationsModule.locations')) LIKE ?
-        
-        -- Search in Interventions (Array of Objects)
-        OR LOWER(JSON_EXTRACT(raw_json, '$.protocolSection.armsInterventionsModule.interventions')) LIKE ?
-      )
-    `);
-
-    values.push(
-      keyword, // nct_id
-      keyword, // title
-      keyword, // condition_name
-      keyword, // phase
-      keyword, // eligibility
-      keyword, // briefSummary
-      keyword, // detailedDescription
-      keyword, // conditions
-      keyword, // meshes
-      keyword, // locations
-      keyword, // interventions
-    );
-  }
+  // MariaDB/MySQL Boolean Mode Search
+  // We'll treat the inquiry as a set of required tokens
+  const booleanQuery = tokens.map((t) => `+${t}*`).join(" ");
 
   return {
-    where: `WHERE ${andClauses.join(" AND ")}`,
-    values,
+    where: "WHERE MATCH(search_text) AGAINST(? IN BOOLEAN MODE)",
+    values: [booleanQuery],
   };
 };
 

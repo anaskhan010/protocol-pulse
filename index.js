@@ -15,7 +15,7 @@ const patientRoute = require("./routes/patients/patientRoute");
 
 dotenv.config({ path: "./config/config.env" });
 
-cron.schedule("*/3 * * * *", () => {
+cron.schedule("0 * * * *", () => {
   console.log("Syncing studies...");
   studiesController.getAllStuduies();
 });
